@@ -37,8 +37,8 @@ public class GuideDebuggingExtraTests {
 		try {
 			StringWriter sw = new StringWriter();
 			FakeRepository.findAllUserByName(Flux.just("pedro", "simon", "stephane"))
-			              .transform(FakeUtils1.applyFilters)
-			              .transform(FakeUtils2.enrichUser)
+			              .composeNow(FakeUtils1.applyFilters)
+			              .composeNow(FakeUtils2.enrichUser)
 			              .subscribe(System.out::println,
 					              t -> t.printStackTrace(new PrintWriter(sw))
 			              );

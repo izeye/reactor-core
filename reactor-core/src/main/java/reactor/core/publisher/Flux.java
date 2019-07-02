@@ -3397,18 +3397,64 @@ public abstract class Flux<T> implements CorePublisher<T> {
 	 * flux.compose(original -> original.log());
 	 * </pre></blockquote>
 	 * <p>
-	 * <img class="marble" src="doc-files/marbles/composeForFlux.svg" alt="">
+	 * <img class="marble" src="doc-files/marbles/composeDeferForFlux.svg" alt="">
 	 *
 	 * @param transformer the {@link Function} to lazily map this {@link Flux} into a target {@link Publisher}
 	 * instance for each new subscriber
 	 * @param <V> the item type in the returned {@link Publisher}
 	 *
 	 * @return a new {@link Flux}
-	 * @see #transform  transform() for immmediate transformation of {@link Flux}
+	 * @see #composeNow  transform() for immmediate transformation of {@link Flux}
 	 * @see #as as() for a loose conversion to an arbitrary type
+	 * @deprecated will be removed in 3.4.0, use {@link #composeDefer(Function)} instead
 	 */
+	@Deprecated
 	public final <V> Flux<V> compose(Function<? super Flux<T>, ? extends Publisher<V>> transformer) {
 		return defer(() -> transformer.apply(this));
+	}
+
+	/**
+	 * Defer the transformation of this {@link Flux} in order to generate a target {@link Flux} type.
+	 * A transformation will occur for each {@link Subscriber}. For instance:
+	 * <blockquote><pre>
+	 * flux.composeDefer(original -> original.log());
+	 * </pre></blockquote>
+	 * <p>
+	 * <img class="marble" src="doc-files/marbles/composeDeferForFlux.svg" alt="">
+	 *
+	 * @param transformer the {@link Function} to lazily map this {@link Flux} into a target {@link Publisher}
+	 * instance for each new subscriber
+	 * @param <V> the item type in the returned {@link Publisher}
+	 *
+	 * @return a new {@link Flux}
+	 * @see #composeNow(Function) composeNow() for immmediate transformation of {@link Flux}
+	 * @see #as as() for a loose conversion to an arbitrary type
+	 */
+	public final <V> Flux<V> composeDefer(Function<? super Flux<T>, ? extends Publisher<V>> transformer) {
+		return defer(() -> transformer.apply(this));
+	}
+
+	/**
+	 * Transform this {@link Flux} in order to generate a target {@link Flux}. Unlike
+	 * {@link #composeDefer(Function)}, the provided function is executed as part of assembly.
+	 * <blockquote><pre>
+	 * Function<Flux, Flux> applySchedulers = flux -> flux.subscribeOn(Schedulers.elastic())
+	 *                                                    .publishOn(Schedulers.parallel());
+	 * flux.composeNow(applySchedulers).map(v -> v * v).subscribe();
+	 * </pre></blockquote>
+	 * <p>
+	 * <img class="marble" src="doc-files/marbles/composeNowForFlux.svg" alt="">
+	 *
+	 * @param transformer the {@link Function} to immediately map this {@link Flux} into a target {@link Flux}
+	 * instance.
+	 * @param <V> the item type in the returned {@link Flux}
+	 *
+	 * @return a new {@link Flux}
+	 * @see #composeDefer(Function) for deferred composition of {@link Flux} for each {@link Subscriber}
+	 * @see #as for a loose conversion to an arbitrary type
+	 */
+	public final <V> Flux<V> composeNow(Function<? super Flux<T>, ? extends Publisher<V>> transformer) {
+		return onAssembly(from(transformer.apply(this)));
 	}
 
 	/**
@@ -8715,7 +8761,7 @@ public abstract class Flux<T> implements CorePublisher<T> {
 	 * flux.transform(applySchedulers).map(v -> v * v).subscribe();
 	 * </pre></blockquote>
 	 * <p>
-	 * <img class="marble" src="doc-files/marbles/transformForFlux.svg" alt="">
+	 * <img class="marble" src="doc-files/marbles/composeNowForFlux.svg" alt="">
 	 *
 	 * @param transformer the {@link Function} to immediately map this {@link Flux} into a target {@link Flux}
 	 * instance.
@@ -8724,9 +8770,11 @@ public abstract class Flux<T> implements CorePublisher<T> {
 	 * @return a new {@link Flux}
 	 * @see #compose(Function) for deferred composition of {@link Flux} for each {@link Subscriber}
 	 * @see #as for a loose conversion to an arbitrary type
+	 * @deprecated will be removed in 3.4.0, use {@link #composeNow(Function)} instead
 	 */
+	@Deprecated
 	public final <V> Flux<V> transform(Function<? super Flux<T>, ? extends Publisher<V>> transformer) {
-		return onAssembly(from(transformer.apply(this)));
+		return composeNow(transformer);
 	}
 
 	/**

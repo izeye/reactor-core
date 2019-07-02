@@ -1750,7 +1750,7 @@ public abstract class Mono<T> implements CorePublisher<T> {
 	 * mono.compose(original -> original.log());
 	 * </pre></blockquote>
 	 * <p>
-	 * <img class="marble" src="doc-files/marbles/composeForMono.svg" alt="">
+	 * <img class="marble" src="doc-files/marbles/composeDeferForMono.svg" alt="">
 	 *
 	 * @param transformer the {@link Function} to lazily map this {@link Mono} into a target {@link Mono}
 	 * instance upon subscription.
@@ -1758,10 +1758,60 @@ public abstract class Mono<T> implements CorePublisher<T> {
 	 *
 	 * @return a new {@link Mono}
 	 * @see #as as() for a loose conversion to an arbitrary type
-	 * @see #transform(Function)
+	 * @see #composeNow(Function)
+	 * @deprecated will be removed in 3.4.0, use {@link #composeDefer(Function)} instead
 	 */
+	@Deprecated
 	public final <V> Mono<V> compose(Function<? super Mono<T>, ? extends Publisher<V>> transformer) {
+		return composeDefer(transformer);
+	}
+
+	/**
+	 * Defer the given transformation to this {@link Mono} in order to generate a
+	 * target {@link Mono} type. A transformation will occur for each
+	 * {@link Subscriber}. For instance:
+	 *
+	 * <blockquote><pre>
+	 * mono.composeDefer(original -> original.log());
+	 * </pre></blockquote>
+	 * <p>
+	 * <img class="marble" src="doc-files/marbles/composeDeferForMono.svg" alt="">
+	 *
+	 * @param transformer the {@link Function} to lazily map this {@link Mono} into a target {@link Mono}
+	 * instance upon subscription.
+	 * @param <V> the item type in the returned {@link Publisher}
+	 *
+	 * @return a new {@link Mono}
+	 * @see #as as() for a loose conversion to an arbitrary type
+	 * @see #composeNow(Function)
+	 */
+	public final <V> Mono<V> composeDefer(Function<? super Mono<T>, ? extends Publisher<V>> transformer) {
 		return defer(() -> from(transformer.apply(this)));
+	}
+
+	/**
+	 * Transform this {@link Mono} in order to generate a target {@link Mono}.
+	 * Unlike {@link #composeDefer(Function)} the provided function is applied immediately,
+	 * as part of assembly.
+	 *
+	 * <pre>
+	 * Function<Mono, Mono> applySchedulers = mono -> mono.subscribeOn(Schedulers.io())
+	 *                                                    .publishOn(Schedulers.parallel());
+	 * mono.composeNow(applySchedulers).map(v -> v * v).subscribe();
+	 * </pre>
+	 * <p>
+	 * <img class="marble" src="doc-files/marbles/composeNowForMono.svg" alt="">
+	 *
+	 * @param transformer the {@link Function} to immediately map this {@link Mono} into a target {@link Mono}
+	 * instance.
+	 * @param <V> the item type in the returned {@link Mono}
+	 *
+	 * @return a new {@link Mono}
+	 * @see #composeDefer(Function) composeDefer(Function) for deferred composition of {@link Mono} for each {@link Subscriber}
+	 * @see #as(Function) as(Function) for a loose conversion to an arbitrary type
+	 */
+	public final <V> Mono<V> composeNow(Function<? super Mono<T>, ? extends Publisher<V>> transformer) {
+		return onAssembly(from(transformer.apply(this)));
 	}
 
 	/**
@@ -4319,7 +4369,7 @@ public abstract class Mono<T> implements CorePublisher<T> {
 	 * mono.transform(applySchedulers).map(v -> v * v).subscribe();
 	 * </pre>
 	 * <p>
-	 * <img class="marble" src="doc-files/marbles/transformForMono.svg" alt="">
+	 * <img class="marble" src="doc-files/marbles/composeNowForMono.svg" alt="">
 	 *
 	 * @param transformer the {@link Function} to immediately map this {@link Mono} into a target {@link Mono}
 	 * instance.
@@ -4328,9 +4378,11 @@ public abstract class Mono<T> implements CorePublisher<T> {
 	 * @return a new {@link Mono}
 	 * @see #compose(Function) compose(Function) for deferred composition of {@link Mono} for each {@link Subscriber}
 	 * @see #as(Function) as(Function) for a loose conversion to an arbitrary type
+	 * @deprecated will be removed in 3.4.0, use {@link #composeNow(Function)} instead
 	 */
+	@Deprecated
 	public final <V> Mono<V> transform(Function<? super Mono<T>, ? extends Publisher<V>> transformer) {
-		return onAssembly(from(transformer.apply(this)));
+		return composeNow(transformer);
 	}
 
 	/**
